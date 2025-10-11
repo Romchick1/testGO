@@ -3,12 +3,13 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"log"
 
 	"github.com/Romchick1/testGO/internal/models"
 )
 
-// Products
 func GetAllProducts() ([]models.Product, error) {
+	log.Println("Executing query: SELECT id, name, quantity, unit_cost, measure_id FROM public.products")
 	rows, err := DB.Query("SELECT id, name, quantity, unit_cost, measure_id FROM products")
 	if err != nil {
 		return nil, err
@@ -28,6 +29,7 @@ func GetAllProducts() ([]models.Product, error) {
 
 func GetProductByID(id int) (models.Product, error) {
 	var p models.Product
+	log.Println("Executing query: SELECT id, name, quantity, unit_cost, measure_id FROM products WHERE id = $1")
 	err := DB.QueryRow("SELECT id, name, quantity, unit_cost, measure_id FROM products WHERE id = $1", id).
 		Scan(&p.ID, &p.Name, &p.Quantity, &p.UnitCost, &p.MeasureID)
 	if err == sql.ErrNoRows {
@@ -54,7 +56,6 @@ func DeleteProduct(id int) error {
 	return err
 }
 
-// Measures (аналогично)
 func GetAllMeasures() ([]models.Measure, error) {
 	rows, err := DB.Query("SELECT id, name FROM measures")
 	if err != nil {
