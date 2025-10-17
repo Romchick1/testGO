@@ -3,14 +3,21 @@ package repository
 import (
 	"database/sql"
 	"errors"
-	"log"
 
 	"github.com/Romchick1/testGO/internal/models"
 )
 
-func GetAllProducts() ([]models.Product, error) {
-	log.Println("Executing query: SELECT id, name, quantity, unit_cost, measure_id FROM public.products")
-	rows, err := DB.Query("SELECT id, name, quantity, unit_cost, measure_id FROM products")
+type Repository struct {
+	db *sql.DB
+}
+
+func NewRepository(db *sql.DB) *Repository {
+	return &Repository{db: db}
+}
+
+// Products
+func (r *Repository) GetAllProducts() ([]models.Product, error) {
+	rows, err := r.db.Query("SELECT id, name, quantity, unit_cost, measure_id FROM public.products")
 	if err != nil {
 		return nil, err
 	}
@@ -27,10 +34,9 @@ func GetAllProducts() ([]models.Product, error) {
 	return products, nil
 }
 
-func GetProductByID(id int) (models.Product, error) {
+func (r *Repository) GetProductByID(id int) (models.Product, error) {
 	var p models.Product
-	log.Println("Executing query: SELECT id, name, quantity, unit_cost, measure_id FROM products WHERE id = $1")
-	err := DB.QueryRow("SELECT id, name, quantity, unit_cost, measure_id FROM products WHERE id = $1", id).
+	err := r.db.QueryRow("SELECT id, name, quantity, unit_cost, measure_id FROM public.products WHERE id = $1", id).
 		Scan(&p.ID, &p.Name, &p.Quantity, &p.UnitCost, &p.MeasureID)
 	if err == sql.ErrNoRows {
 		return p, errors.New("product not found")
@@ -38,26 +44,26 @@ func GetProductByID(id int) (models.Product, error) {
 	return p, err
 }
 
-func CreateProduct(p models.Product) (int, error) {
+func (r *Repository) CreateProduct(p models.Product) (int, error) {
 	var id int
-	err := DB.QueryRow("INSERT INTO products (name, quantity, unit_cost, measure_id) VALUES ($1, $2, $3, $4) RETURNING id",
+	err := r.db.QueryRow("INSERT INTO public.products (name, quantity, unit_cost, measure_id) VALUES ($1, $2, $3, $4) RETURNING id",
 		p.Name, p.Quantity, p.UnitCost, p.MeasureID).Scan(&id)
 	return id, err
 }
 
-func UpdateProduct(id int, p models.Product) error {
-	_, err := DB.Exec("UPDATE products SET name=$1, quantity=$2, unit_cost=$3, measure_id=$4 WHERE id=$5",
+func (r *Repository) UpdateProduct(id int, p models.Product) error {
+	_, err := r.db.Exec("UPDATE public.products SET name=$1, quantity=$2, unit_cost=$3, measure_id=$4 WHERE id=$5",
 		p.Name, p.Quantity, p.UnitCost, p.MeasureID, id)
 	return err
 }
 
-func DeleteProduct(id int) error {
-	_, err := DB.Exec("DELETE FROM products WHERE id=$1", id)
+func (r *Repository) DeleteProduct(id int) error {
+	_, err := r.db.Exec("DELETE FROM public.products WHERE id=$1", id)
 	return err
 }
 
-func GetAllMeasures() ([]models.Measure, error) {
-	rows, err := DB.Query("SELECT id, name FROM measures")
+func (r *Repository) GetAllMeasures() ([]models.Measure, error) {
+	rows, err := r.db.Query("SELECT id, name FROM public.measures")
 	if err != nil {
 		return nil, err
 	}
@@ -74,9 +80,9 @@ func GetAllMeasures() ([]models.Measure, error) {
 	return measures, nil
 }
 
-func GetMeasureByID(id int) (models.Measure, error) {
+func (r *Repository) GetMeasureByID(id int) (models.Measure, error) {
 	var m models.Measure
-	err := DB.QueryRow("SELECT id, name FROM measures WHERE id = $1", id).
+	err := r.db.QueryRow("SELECT id, name FROM public.measures WHERE id = $1", id).
 		Scan(&m.ID, &m.Name)
 	if err == sql.ErrNoRows {
 		return m, errors.New("measure not found")
@@ -84,18 +90,18 @@ func GetMeasureByID(id int) (models.Measure, error) {
 	return m, err
 }
 
-func CreateMeasure(m models.Measure) (int, error) {
+func (r *Repository) CreateMeasure(m models.Measure) (int, error) {
 	var id int
-	err := DB.QueryRow("INSERT INTO measures (name) VALUES ($1) RETURNING id", m.Name).Scan(&id)
+	err := r.db.QueryRow("INSERT INTO public.measures (name) VALUES ($1) RETURNING id", m.Name).Scan(&id)
 	return id, err
 }
 
-func UpdateMeasure(id int, m models.Measure) error {
-	_, err := DB.Exec("UPDATE measures SET name=$1 WHERE id=$2", m.Name, id)
+func (r *Repository) UpdateMeasure(id int, m models.Measure) error {
+	_, err := r.db.Exec("UPDATE public.measures SET name=$1 WHERE id=$2", m.Name, id)
 	return err
 }
 
-func DeleteMeasure(id int) error {
-	_, err := DB.Exec("DELETE FROM measures WHERE id=$1", id)
+func (r *Repository) DeleteMeasure(id int) error {
+	_, err := r.db.Exec("DELETE FROM public.measures WHERE id=$1", id)
 	return err
 }

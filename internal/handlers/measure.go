@@ -10,8 +10,16 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func GetMeasures(w http.ResponseWriter, r *http.Request) {
-	measures, err := repository.GetAllMeasures()
+type MeasureHandler struct {
+	repo *repository.Repository
+}
+
+func NewMeasureHandler(repo *repository.Repository) *MeasureHandler {
+	return &MeasureHandler{repo: repo}
+}
+
+func (h *MeasureHandler) GetMeasures(w http.ResponseWriter, r *http.Request) {
+	measures, err := h.repo.GetAllMeasures()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -19,10 +27,10 @@ func GetMeasures(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(measures)
 }
 
-func GetMeasure(w http.ResponseWriter, r *http.Request) {
+func (h *MeasureHandler) GetMeasure(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])
-	measure, err := repository.GetMeasureByID(id)
+	measure, err := h.repo.GetMeasureByID(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -30,13 +38,13 @@ func GetMeasure(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(measure)
 }
 
-func CreateMeasure(w http.ResponseWriter, r *http.Request) {
+func (h *MeasureHandler) CreateMeasure(w http.ResponseWriter, r *http.Request) {
 	var m models.Measure
 	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-	id, err := repository.CreateMeasure(m)
+	id, err := h.repo.CreateMeasure(m)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -45,7 +53,7 @@ func CreateMeasure(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(id)
 }
 
-func UpdateMeasure(w http.ResponseWriter, r *http.Request) {
+func (h *MeasureHandler) UpdateMeasure(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])
 	var m models.Measure
@@ -53,17 +61,17 @@ func UpdateMeasure(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-	if err := repository.UpdateMeasure(id, m); err != nil {
+	if err := h.repo.UpdateMeasure(id, m); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
 }
 
-func DeleteMeasure(w http.ResponseWriter, r *http.Request) {
+func (h *MeasureHandler) DeleteMeasure(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])
-	if err := repository.DeleteMeasure(id); err != nil {
+	if err := h.repo.DeleteMeasure(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
