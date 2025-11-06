@@ -28,3 +28,18 @@ curl -v -X POST http://localhost:8080/product/ -H "Content-Type: application/jso
 DELETE запрос
 
 curl -v -X DELETE http://localhost:8080/measure/5 
+
+Работа с пользователями:
+
+Добавление пользователя
+
+curl -X POST http://localhost:8080/manager/ \
+  -H "X-Manager-Login: admin" \
+  -H "Content-Type: application/json" \
+  -d '{"login":"john", "full_name":"John Doe"}'
+
+  Данные о вашем пользователе:
+
+  curl http://localhost:8080/manager/me -H "X-Manager-Login: john"
+
+  Теперь любой запрос должен сожержать заголовок   -H "X-Manager-Login: admin"

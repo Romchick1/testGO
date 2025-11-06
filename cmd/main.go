@@ -38,8 +38,6 @@ func main() {
 	r.HandleFunc("/product/{id}", auth(productHandler.UpdateProduct)).Methods("PUT")
 	r.HandleFunc("/product/{id}", auth(productHandler.DeleteProduct)).Methods("DELETE")
 
-	r.HandleFunc("/measure/", auth(measureHandler.GetMeasures)).Methods("GET")
-
 	r.HandleFunc("/measure/", measureHandler.GetMeasures).Methods("GET")
 	r.HandleFunc("/measure/{id}", measureHandler.GetMeasure).Methods("GET")
 	r.HandleFunc("/measure/", measureHandler.CreateMeasure).Methods("POST")

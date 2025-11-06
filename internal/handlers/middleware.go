@@ -13,7 +13,12 @@ func (h *ManagerHandler) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc 
 			return
 		}
 
-		// Сохраняем login в контексте
+		_, err := h.repo.GetManagerByLogin(login)
+		if err != nil {
+			http.Error(w, "manager not found", http.StatusUnauthorized)
+			return
+		}
+
 		ctx := context.WithValue(r.Context(), "manager_login", login)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
