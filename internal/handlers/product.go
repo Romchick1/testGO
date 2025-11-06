@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/Romchick1/testGO/internal/models"
 	"github.com/Romchick1/testGO/internal/repository"
@@ -19,7 +20,14 @@ func NewProductHandler(repo *repository.Repository) *ProductHandler {
 }
 
 func (h *ProductHandler) GetProducts(w http.ResponseWriter, r *http.Request) {
-	products, err := h.repo.GetAllProducts()
+	login := r.Context().Value("manager_login").(string)
+	manager, err := h.repo.GetManagerByLogin(login)
+	if err != nil {
+		http.Error(w, "manager not found", http.StatusNotFound)
+		return
+	}
+
+	products, err := h.repo.GetProductsByManagerID(manager.ID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -27,25 +35,28 @@ func (h *ProductHandler) GetProducts(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(products)
 }
 
-func (h *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id, _ := strconv.Atoi(vars["id"])
-	product, err := h.repo.GetProductByID(id)
+func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
+	login := r.Context().Value("manager_login").(string)
+	manager, err := h.repo.GetManagerByLogin(login)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, "manager not found", http.StatusNotFound)
 		return
 	}
-	json.NewEncoder(w).Encode(product)
-}
 
-func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	var p models.Product
 	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
 		return
 	}
+
+	p.ManagerID = manager.ID
+
 	id, err := h.repo.CreateProduct(p)
 	if err != nil {
+		if strings.Contains(err.Error(), "unique_product_name") {
+			http.Error(w, "product name must be unique", http.StatusConflict)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -54,25 +65,54 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id, _ := strconv.Atoi(vars["id"])
-	var p models.Product
-	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+	login := r.Context().Value("manager_login").(string)
+	manager, err := h.repo.GetManagerByLogin(login)
+	if err != nil {
+		http.Error(w, "manager not found", http.StatusNotFound)
 		return
 	}
-	if err := h.repo.UpdateProduct(id, p); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, "invalid product ID", http.StatusBadRequest)
+		return
+	}
+
+	var p models.Product
+	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.repo.UpdateProductWithManagerCheck(id, p, manager.ID); err != nil {
+		if strings.Contains(err.Error(), "unique_product_name") {
+			http.Error(w, "product name must be unique", http.StatusConflict)
+			return
+		}
+		http.Error(w, "product not found or access denied", http.StatusNotFound)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
 }
 
 func (h *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
+	login := r.Context().Value("manager_login").(string)
+	manager, err := h.repo.GetManagerByLogin(login)
+	if err != nil {
+		http.Error(w, "manager not found", http.StatusNotFound)
+		return
+	}
+
 	vars := mux.Vars(r)
-	id, _ := strconv.Atoi(vars["id"])
-	if err := h.repo.DeleteProduct(id); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, "invalid product ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.repo.DeleteProductWithManagerCheck(id, manager.ID); err != nil {
+		http.Error(w, "product not found or access denied", http.StatusNotFound)
 		return
 	}
 	w.WriteHeader(http.StatusOK)

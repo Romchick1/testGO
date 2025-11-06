@@ -10,7 +10,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var DB *sql.DB
+//var DB *sql.DB
 
 func InitDB() (*sql.DB, error) {
 	if err := godotenv.Load(); err != nil {

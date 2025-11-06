@@ -14,22 +14,32 @@ func main() {
 	if err != nil {
 		log.Fatal((err))
 	}
-	defer repository.DB.Close()
+	defer db.Close()
 
 	repo := repository.NewRepository(db)
-	productHandler := handlers.NewProductHandler(repo)
 	measureHandler := handlers.NewMeasureHandler(repo)
 
 	r := mux.NewRouter()
 
-	// Product routes
-	r.HandleFunc("/product/", productHandler.GetProducts).Methods("GET")
-	r.HandleFunc("/product/{id}", productHandler.GetProduct).Methods("GET")
-	r.HandleFunc("/product/", productHandler.CreateProduct).Methods("POST")
-	r.HandleFunc("/product/{id}", productHandler.UpdateProduct).Methods("PUT")
-	r.HandleFunc("/product/{id}", productHandler.DeleteProduct).Methods("DELETE")
+	managerHandler := handlers.NewManagerHandler(repo)
+	productHandler := handlers.NewProductHandler(repo)
 
-	// Measure routes
+	auth := managerHandler.AuthMiddleware
+
+	r.HandleFunc("/manager/me", auth(managerHandler.GetMyInfo)).Methods("GET")
+	r.HandleFunc("/manager/", auth(managerHandler.GetAllManagers)).Methods("GET")
+	r.HandleFunc("/manager/", auth(managerHandler.CreateManager)).Methods("POST")
+	r.HandleFunc("/manager/{login}", auth(managerHandler.UpdateManager)).Methods("PUT")
+	r.HandleFunc("/manager/{login}", auth(managerHandler.DeleteManager)).Methods("DELETE")
+
+	r.HandleFunc("/product/", auth(productHandler.GetProducts)).Methods("GET")
+	r.HandleFunc("/product/{id}", auth(productHandler.GetProducts)).Methods("GET")
+	r.HandleFunc("/product/", auth(productHandler.CreateProduct)).Methods("POST")
+	r.HandleFunc("/product/{id}", auth(productHandler.UpdateProduct)).Methods("PUT")
+	r.HandleFunc("/product/{id}", auth(productHandler.DeleteProduct)).Methods("DELETE")
+
+	r.HandleFunc("/measure/", auth(measureHandler.GetMeasures)).Methods("GET")
+
 	r.HandleFunc("/measure/", measureHandler.GetMeasures).Methods("GET")
 	r.HandleFunc("/measure/{id}", measureHandler.GetMeasure).Methods("GET")
 	r.HandleFunc("/measure/", measureHandler.CreateMeasure).Methods("POST")

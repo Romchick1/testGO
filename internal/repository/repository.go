@@ -105,3 +105,89 @@ func (r *Repository) DeleteMeasure(id int) error {
 	_, err := r.db.Exec("DELETE FROM public.measures WHERE id=$1", id)
 	return err
 }
+
+func (r *Repository) GetManagerByLogin(login string) (models.Manager, error) {
+	var m models.Manager
+	err := r.db.QueryRow("SELECT id, login, full_name FROM public.managers WHERE login = $1", login).
+		Scan(&m.ID, &m.Login, &m.FullName)
+	if err == sql.ErrNoRows {
+		return m, errors.New("manager not found")
+	}
+	return m, err
+}
+
+func (r *Repository) GetAllManagers() ([]models.Manager, error) {
+	rows, err := r.db.Query("SELECT id, login, full_name FROM public.managers")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var managers []models.Manager
+	for rows.Next() {
+		var m models.Manager
+		if err := rows.Scan(&m.ID, &m.Login, &m.FullName); err != nil {
+			return nil, err
+		}
+		managers = append(managers, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return managers, nil
+}
+
+func (r *Repository) CreateManager(m models.Manager) (int, error) {
+	var id int
+	err := r.db.QueryRow("INSERT INTO public.managers (login, full_name) VALUES ($1, $2) RETURNING id",
+		m.Login, m.FullName).Scan(&id)
+	return id, err
+}
+
+func (r *Repository) UpdateManager(login string, m models.Manager) error {
+	_, err := r.db.Exec("UPDATE public.managers SET full_name = $1 WHERE login = $2", m.FullName, login)
+	return err
+}
+
+func (r *Repository) DeleteManager(login string) error {
+	_, err := r.db.Exec("DELETE FROM public.managers WHERE login = $1", login)
+	return err
+}
+
+func (r *Repository) GetProductsByManagerID(managerID int) ([]models.Product, error) {
+	rows, err := r.db.Query(`
+        SELECT p.id, p.name, p.quantity, p.unit_cost, p.measure_id 
+        FROM public.products p 
+        WHERE p.manager_id = $1`, managerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var products []models.Product
+	for rows.Next() {
+		var p models.Product
+		if err := rows.Scan(&p.ID, &p.Name, &p.Quantity, &p.UnitCost, &p.MeasureID); err != nil {
+			return nil, err
+		}
+		products = append(products, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return products, nil
+}
+
+func (r *Repository) UpdateProductWithManagerCheck(id int, p models.Product, managerID int) error {
+	_, err := r.db.Exec(`
+        UPDATE public.products 
+        SET name=$1, quantity=$2, unit_cost=$3, measure_id=$4 
+        WHERE id=$5 AND manager_id=$6`,
+		p.Name, p.Quantity, p.UnitCost, p.MeasureID, id, managerID)
+	return err
+}
+
+func (r *Repository) DeleteProductWithManagerCheck(id int, managerID int) error {
+	_, err := r.db.Exec("DELETE FROM public.products WHERE id=$1 AND manager_id=$2", id, managerID)
+	return err
+}
